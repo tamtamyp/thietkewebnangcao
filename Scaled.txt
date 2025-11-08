@@ -1,0 +1,85 @@
+# CELL 1: Import thư viện
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import StandardScaler
+
+sns.set(style='whitegrid')
+%matplotlib inline
+# CELL 2: Đọc dữ liệu từ URL (không cần tải file)
+url = "https://archive.ics.uci.edu/ml/machine-learning-databases/00291/airfoil_self_noise.dat"
+column_names = ['Frequency', 'Angle_of_attack', 'Chord_length', 'Free_stream_velocity', 'Suction_side_displacement_thickness', 'Scaled_sound_pressure_level']
+df = pd.read_csv(url, delim_whitespace=True, names=column_names)
+df.head()
+# CELL 3: Trực quan biểu đồ giữa vận tốc dòng không khí và mức áp suất âm thanh (2đ)
+plt.figure(figsize=(8,6))
+sns.scatterplot(data=df, x='Free_stream_velocity', y='Scaled_sound_pressure_level', alpha=0.6, color='blue')
+plt.title('Mức áp suất âm thanh theo vận tốc dòng không khí')
+plt.xlabel('Vận tốc dòng không khí (m/s)')
+plt.ylabel('Mức áp suất âm thanh (dB)')
+plt.grid(True)
+plt.show()
+# CELL 4: Trực quan biểu đồ giữa vị trí chord, vận tốc dòng không khí và mức áp suất âm thanh (2đ)
+plt.figure(figsize=(10,6))
+sns.scatterplot(data=df, x='Chord_length', y='Scaled_sound_pressure_level', 
+                hue='Free_stream_velocity', palette='coolwarm', alpha=0.7)
+plt.title('Mức áp suất âm thanh theo chiều dài chord và vận tốc dòng không khí')
+plt.xlabel('Chiều dài chord (m)')
+plt.ylabel('Mức áp suất âm thanh (dB)')
+plt.legend(title='Vận tốc (m/s)')
+plt.show()
+# CELL 5: Tiền xử lý + Chia train/test 80/20 (2đ)
+X = df.drop('Scaled_sound_pressure_level', axis=1)
+y = df['Scaled_sound_pressure_level']
+
+# Chuẩn hóa dữ liệu
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# Chia train/test
+X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+
+print(f"Train: {X_train.shape}, Test: {X_test.shape}")
+
+# CELL 6: Huấn luyện Linear Regression trên tập train (2đ)
+model = LinearRegression()
+model.fit(X_train, y_train)
+print("Huấn luyện Linear Regression xong!")
+
+# CELL 7: Dự đoán + Đánh giá MSE trên tập test (2đ)
+y_pred = model.predict(X_test)
+mse = mean_squared_error(y_test, y_pred)
+
+print(f"MSE trên tập test: {mse:.4f}")
+
+# CELL 8: Tối ưu mô hình sao cho MSE < 15 (2đ)
+# Thử thêm đa thức bậc 2
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.pipeline import make_pipeline
+
+# Tạo mô hình đa thức bậc 2
+poly_model = make_pipeline(PolynomialFeatures(degree=2), LinearRegression())
+poly_model.fit(X_train, y_train)
+
+# Dự đoán
+y_pred_poly = poly_model.predict(X_test)
+mse_poly = mean_squared_error(y_test, y_pred_poly)
+
+print(f"\nTỐI ƯU (Đa thức bậc 2) – MSE: {mse_poly:.4f}")
+if mse_poly < 15:
+    print("ĐẠT YÊU CẦU: MSE < 15")
+
+# CELL 9: Vẽ biểu đồ so sánh thực tế vs dự đoán (bonus đẹp)
+plt.figure(figsize=(8,6))
+plt.scatter(y_test, y_pred_poly, alpha=0.6, color='green')
+plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--', lw=2)
+plt.title('Thực tế vs Dự đoán (Mô hình tối ưu)')
+plt.xlabel('Giá trị thực tế (dB)')
+plt.ylabel('Giá trị dự đoán (dB)')
+plt.grid(True)
+plt.show()
