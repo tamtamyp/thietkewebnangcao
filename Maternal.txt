@@ -1,0 +1,100 @@
+# CELL 1: Import thư viện
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.preprocessing import LabelEncoder
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+
+sns.set(style='whitegrid')
+%matplotlib inline
+
+# CELL 2: Đọc dữ liệu từ URL (không cần tải file)
+url = "https://raw.githubusercontent.com/ahmedrasheeds/Maternal-Health-Risk-Data-Set/main/Maternal%20Health%20Risk%20Data%20Set.csv"
+df = pd.read_csv(url)
+df.head()
+
+# CELL 3: Thống kê mô tả (2đ)
+print("Kích thước dữ liệu:", df.shape)
+print("\nThông tin:")
+df.info()
+
+print("\nThống kê mô tả:")
+df.describe().T
+
+# CELL 4: Phân tích phân phối các lớp RiskLevel (2đ)
+plt.figure(figsize=(8,5))
+sns.countplot(data=df, x='RiskLevel', palette='viridis', order=['Low Risk', 'Mid Risk', 'High Risk'])
+plt.title('Phân phối mức độ rủi ro')
+plt.xlabel('Risk Level')
+plt.ylabel('Số lượng')
+plt.show()
+
+print(df['RiskLevel'].value_counts())
+
+# CELL 5: Tiền xử lý
+le = LabelEncoder()
+df['RiskLevel'] = le.fit_transform(df['RiskLevel'])  # 0: High, 1: Low, 2: Mid (tùy thứ tự)
+
+X = df.drop('RiskLevel', axis=1)
+y = df['RiskLevel']
+
+# Chia train/test 80/20
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+print(f"Train: {X_train.shape}, Test: {X_test.shape}")
+
+# CELL 6: Huấn luyện 4 mô hình + Đánh giá Accuracy + Cross-validation k=5 (20đ + 2đ)
+models = {
+    'Random Forest': RandomForestClassifier(n_estimators=100, random_state=42),
+    'Logistic Regression': LogisticRegression(max_iter=1000),
+    'SVM': SVC(kernel='rbf', random_state=42),
+    'KNN': KNeighborsClassifier(n_neighbors=5)
+}
+
+results = {}
+
+for name, model in models.items():
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    acc = accuracy_score(y_test, y_pred)
+    
+    cv_scores = cross_val_score(model, X, y, cv=5)
+    
+    results[name] = {'Accuracy': acc, 'CV Mean': cv_scores.mean(), 'CV Std': cv_scores.std()}
+    
+    print(f"\n=== {name} ===")
+    print(f"Accuracy: {acc:.4f}")
+    print(f"CV Mean: {cv_scores.mean():.4f} (±{cv_scores.std():.4f})")
+
+# CELL 7: Tối ưu mô hình để Accuracy > 80% (2đ)
+best_model = RandomForestClassifier(
+    n_estimators=200,
+    max_depth=10,
+    min_samples_split=5,
+    min_samples_leaf=2,
+    random_state=42,
+    class_weight='balanced'
+)
+
+best_model.fit(X_train, y_train)
+y_pred_best = best_model.predict(X_test)
+final_acc = accuracy_score(y_test, y_pred_best)
+
+print(f"\nTỐI ƯU – Accuracy: {final_acc:.4f}")
+if final_acc > 0.8:
+    print("ĐẠT YÊU CẦU: Accuracy > 80%")
+
+# CELL 8: Vẽ Confusion Matrix (bonus đẹp)
+plt.figure(figsize=(6,5))
+sns.heatmap(confusion_matrix(y_test, y_pred_best), annot=True, fmt='d', cmap='Blues',
+            xticklabels=le.classes_, yticklabels=le.classes_)
+plt.title('Confusion Matrix - Mô hình tối ưu')
+plt.xlabel('Dự đoán')
+plt.ylabel('Thực tế')
+plt.show()
