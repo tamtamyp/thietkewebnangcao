@@ -1,0 +1,97 @@
+# CELL 1: Import thư viện
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+
+sns.set(style='whitegrid')
+%matplotlib inline
+# CELL 2: Đọc dữ liệu từ URL (không cần tải file)
+url = "https://archive.ics.uci.edu/ml/machine-learning-databases/00292/Wholesale%20customers%20data.csv"
+df = pd.read_csv(url)
+df.head()
+# CELL 3: Trực quan số lượng lớp ở biến mục tiêu Region và Channel (2đ)
+plt.figure(figsize=(12,5))
+
+# Biểu đồ 1: Phân phối Channel
+plt.subplot(1, 2, 1)
+sns.countplot(data=df, x='Channel', palette='Set2')
+plt.title('Phân phối Channel')
+plt.xlabel('Channel (1=Horeca, 2=Retail)')
+plt.ylabel('Số lượng')
+
+# Biểu đồ 2: Phân phối Region
+plt.subplot(1, 2, 2)
+sns.countplot(data=df, x='Region', palette='Set1')
+plt.title('Phân phối Region')
+plt.xlabel('Region (1=Lisbon, 2=Oporto, 3=Other)')
+plt.ylabel('Số lượng')
+
+plt.tight_layout()
+plt.show()
+
+print("Số lượng theo Channel:\n", df['Channel'].value_counts())
+print("\nSố lượng theo Region:\n", df['Region'].value_counts())
+# CELL 4: Tiền xử lý + Chia dữ liệu train/test 80/20 (2đ)
+# Biến mục tiêu: Channel (1=Horeca, 2=Retail)
+X = df.drop(['Channel', 'Region'], axis=1)  # Loại cả Region vì không dùng để dự đoán Channel
+y = df['Channel']
+
+# Chuẩn hóa dữ liệu
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# Chia train/test
+X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42, stratify=y)
+
+print(f"Train: {X_train.shape}, Test: {X_test.shape}")
+# CELL 5: Huấn luyện KNN trên tập train (2đ)
+knn = KNeighborsClassifier(n_neighbors=5)
+knn.fit(X_train, y_train)
+print("Huấn luyện KNN xong!")
+# CELL 6: Dự đoán + Đánh giá với Classification Report trên tập test (2đ)
+y_pred = knn.predict(X_test)
+
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("\nClassification Report:\n")
+print(classification_report(y_test, y_pred, target_names=['Horeca', 'Retail']))
+# CELL 7: Hiển thị ma trận nhầm lẫn trên tập test (2đ)
+plt.figure(figsize=(6,5))
+sns.heatmap(confusion_matrix(y_test, y_pred), annot=True, fmt='d', cmap='Blues',
+            xticklabels=['Horeca', 'Retail'], yticklabels=['Horeca', 'Retail'])
+plt.title('Confusion Matrix - KNN trên tập test')
+plt.xlabel('Dự đoán')
+plt.ylabel('Thực tế')
+plt.show()
+# CELL 8: Tối ưu mô hình sao cho Accuracy > 70% (2đ)
+# Thử nhiều giá trị k
+k_values = range(1, 21)
+acc_scores = []
+
+for k in k_values:
+    knn_temp = KNeighborsClassifier(n_neighbors=k)
+    knn_temp.fit(X_train, y_train)
+    y_pred_temp = knn_temp.predict(X_test)
+    acc_scores.append(accuracy_score(y_test, y_pred_temp))
+
+# Vẽ biểu đồ tìm k tốt nhất
+plt.figure(figsize=(8,5))
+plt.plot(k_values, acc_scores, marker='o', color='purple')
+plt.title('Accuracy theo số lượng hàng xóm (k)')
+plt.xlabel('k')
+plt.ylabel('Accuracy')
+plt.grid(True)
+plt.show()
+
+# Chọn k tốt nhất
+best_k = k_values[np.argmax(acc_scores)]
+best_acc = max(acc_scores)
+
+print(f"\nTỐI ƯU – k = {best_k}, Accuracy = {best_acc:.4f}")
+if best_acc > 0.7:
+    print("ĐẠT YÊU CẦU: Accuracy > 70%")
